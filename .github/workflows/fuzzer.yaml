@@ -8,12 +8,15 @@ jobs:
     environment: default
 
     steps:
+      - name: Debug file location
+      - run: pwd ls -R
+
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin' # Temurin is the recommended OpenJDK distribution
           java-version: '17'
-          
+
       - name: Compile Fuzzer
         run: javac Fuzzer.java
 
