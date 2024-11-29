@@ -16,5 +16,6 @@ jobs:
 
       - name: Fuzztest
         run: java Fuzzer.java "./html_parser_linux_x86_64"
-
+        env:
+          PATH: ${{ github.workspace }}:$PATH
     continue-on-error: false
