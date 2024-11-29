@@ -3,6 +3,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -25,10 +26,22 @@ public class Fuzzer {
         ProcessBuilder builder = getProcessBuilderForCommand(commandToFuzz, workingDirectory);
         System.out.printf("Command: %s\n", builder.command());
 
-        runCommand(builder, seedInput, getMutatedInputs(seedInput, List.of(
-                input -> input.replace("<html", "a"), // this is just a placeholder, mutators should not only do hard-coded string replacement
-                input -> input.replace("<html", "")
+        runCommand(builder, seedInput, getMutatedInputs(seedInput, List.of(     //All the String lengths are held relatively close to the error point so the Workflow can run
+                input -> input.replace("<",""),   //The first Remove random Brackets
+                input -> input.replace("</",""),
+                input -> input.replace(">",""),
+                Fuzzer::replaceOpenBraces,  //The open Braces get replaced by a random amount
+                Fuzzer::replaceCloseBraces, //The closing Braces get replaced by a random amount
+                Fuzzer::replaceTag,         //The Tags get replaced by a random String of random length
+                Fuzzer::replaceContent,     //The content between two Tags gets replaced by a string of random length
+                Fuzzer::replaceAttributeName,   //The Attribute Name gets replaced by a string of random length
+                Fuzzer::replaceAttributeValue,  //The Attribute Value gets replaced by a string of random length
+                Fuzzer::doubleTag,              //The Most outer Tag gets doubled
+                Fuzzer::doubleRandomTag         //The Tags get replaced by a random Tag and the Most outer one gets doubled
+
         )));
+        System.out.println("Program finished with exit Code 0");
+        System.exit(0);
     }
 
     private static ProcessBuilder getProcessBuilderForCommand(String command, String workingDirectory) {
@@ -50,18 +63,22 @@ public class Fuzzer {
                     System.out.println("Running with Input: "+ input);
                     try{
                         Process process = builder.start();
-                        try(BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()))) {
-                            writer.write(input);
-                            writer.flush();
-                        }
-                        String output = readStreamIntoString(process.getInputStream());
+                        OutputStream streamToCommand = process.getOutputStream();
+                        streamToCommand.write(input.getBytes());
+                        streamToCommand.flush();
+                        streamToCommand.close();
+                        InputStream streamFromCommand = process.getInputStream();
+                        String output = readStreamIntoString(streamFromCommand);
+                        streamFromCommand.close();
                         if (output.isEmpty()) {
-                            System.out.println("Not a valid HTML File");
-                            System.out.println(process.waitFor() == 0? "Process crashed": "Proces didnt crash");
+                            System.out.println("Not a valid HTML File\n");
                         } else {
-                            System.out.println("Valid File with output: " + output);
+                            System.out.println("Output: " + output);
                         }
-
+                        if(process.waitFor() != 0) {
+                            System.out.println("Program finished with exit Code "+process.exitValue());
+                            System.exit(process.exitValue());
+                        }
                     }
                     catch (Exception e){
                         System.out.println(e.toString());
@@ -69,7 +86,6 @@ public class Fuzzer {
                 }
         );
     }
-
     private static String readStreamIntoString(InputStream inputStream) {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         return reader.lines()
@@ -81,5 +97,72 @@ public class Fuzzer {
         return mutators.stream()
                 .map(mutator -> mutator.apply(seedInput)) // Apply each mutator function
                 .collect(Collectors.toList());
+    }
+
+    //Create a Random String of a certain maxLength
+    private static String getRandomString(int maxLength){
+        Random random = new Random();
+        int length = random.nextInt(maxLength) + 1;
+        return random.ints(length, 'a', 'a' + 26)
+                .mapToObj(Character::toChars) // int to char
+                .map(String::valueOf) // char to string
+                .collect(Collectors.joining());
+    }
+
+    //Replace all Tags with a randomaized String
+    private static String replaceTag(String input){
+        String regexStart = "<\\w+";
+        String regexEnd = "</\\w+>";
+        String newTag = getRandomString(24);
+        String newInput = input.replaceAll(regexStart, "<"+newTag);
+        newInput = newInput.replaceAll(regexEnd, "</"+newTag+">");
+        return newInput;
+    }
+
+    //Double the Most Outer Tag
+    private static String doubleTag(String input){
+        String mostOuterTag = "";
+        for(int i = 0; i < input.length()-1; i++){
+            if(input.charAt(i) == '<' || input.charAt(i+1) == '/'){
+                for(int j = i+2; j < input.length(); j++){
+                    if(input.charAt(j) =='>'){
+                        mostOuterTag = input.substring(i+2, j);
+                    }
+                }
+            }
+        }
+        return "<"+mostOuterTag+">"+input+"</"+mostOuterTag+">";
+    }
+    // Replace all Tags with a random String and then double the most outer one
+    private static String doubleRandomTag(String input){
+        return doubleTag(replaceTag(input));
+    }
+
+    //The content between two Tags gets replaced by a string of random length
+    private static String replaceContent(String input){
+        String regex = ">.+<";
+        return input.replaceFirst(regex, ">"+getRandomString(100)+"<");
+
+    }
+
+    //The Attribute Name gets replaced by a string of random length
+    private static String replaceAttributeName(String input){
+        String regex = "\\s\\w+=\"";
+        return input.replaceFirst(regex, " " + getRandomString(50)+"=\"");
+    }
+
+    //The Attribute Value gets replaced by a string of random length
+    private static String replaceAttributeValue(String input){
+        String regex = "=\"\\w+\"";
+        return input.replaceFirst(regex, "=\"" + getRandomString(12)+"\"");
+    }
+
+    //The open Braces get replaced by a random amount
+    public static String replaceOpenBraces(String input){
+        return input.replace("<", "<".repeat((int)(Math.random()*2)+1));
+    }
+    //The Closing Braces get replaced by a random amount
+    public static String replaceCloseBraces(String input){
+        return input.replace(">", ">".repeat((int)(Math.random()*2)+1));
     }
 }
