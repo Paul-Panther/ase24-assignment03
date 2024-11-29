@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Debug file location
-      - run: pwd ls -R
+        run: pwd ls -R
 
       - name: Set up Java
         uses: actions/setup-java@v3
