@@ -50,7 +50,7 @@ public class Fuzzer {
         if (isWindows) {
             builder.command("cmd.exe", "/c", command);
         } else {
-            builder.command("sh", "-c", command);
+            builder.command("/bin/sh", "-c", command);
         }
         builder.directory(new File(workingDirectory));
         builder.redirectErrorStream(true); // redirect stderr to stdout

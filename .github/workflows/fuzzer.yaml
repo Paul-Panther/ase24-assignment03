@@ -18,9 +18,13 @@ jobs:
           java-version: '17'
       - name: Compile Fuzzer
         run: javac Fuzzer.java
+      - name: Check available shells
+        run: |
+          cat /etc/shells
+          which sh
+          echo $SHELL
+      - name: Ensure the parser is executable
+        run: chmod +x ./html_parser_linux_x86_64
 
       - name: Fuzztest
         run: java Fuzzer "./html_parser_linux_x86_64"
-        env:
-          PATH: ${{ github.workspace }}:$PATH
-        continue-on-error: false
