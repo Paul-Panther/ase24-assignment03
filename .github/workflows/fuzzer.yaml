@@ -8,9 +8,8 @@ jobs:
     environment: default
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v3
+       
 
       - name: Set up Java
         uses: actions/setup-java@v3
@@ -19,7 +18,7 @@ jobs:
           java-version: '17'
       - name: Install Shell
         run: sudo apt-get update && sudo apt-get install -y dash
-        
+
       - name: Fuzztest
         run: java Fuzzer.java "./html_parser_linux_x86_64"
         env:
