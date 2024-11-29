@@ -4,10 +4,17 @@ on:
     branches: [ "main" ]
 jobs:
   Fuzzing:
-
     runs-on: ubuntu-latest
     environment: default
 
     steps:
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin' # Temurin is the recommended OpenJDK distribution
+          java-version: '17'
+
       - name: Fuzztest
-        run: java ../../Fuzzer.java "./html_parser_linux_x86_64"
+        run: java Fuzzer.java "./html_parser_linux_x86_64"
+
+    continue-on-error: false
