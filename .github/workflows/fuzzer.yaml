@@ -1,0 +1,13 @@
+name: Fuzzing for HTML
+on:
+  push:
+    branches: [ "main" ]
+jobs:
+  Fuzzing:
+
+    runs-on: ubuntu-latest
+    environment: default
+
+    steps:
+      - name: Fuzztest
+        run: java Fuzzer.java "./html_parser_linux_x86_64"
