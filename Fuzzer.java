@@ -46,7 +46,27 @@ public class Fuzzer {
 
     private static void runCommand(ProcessBuilder builder, String seedInput, List<String> mutatedInputs) {
         Stream.concat(Stream.of(seedInput), mutatedInputs.stream()).forEach(
-                input -> { }
+                input -> {
+                    System.out.println("Running with Input: "+ input);
+                    try{
+                        Process process = builder.start();
+                        try(BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()))) {
+                            writer.write(input);
+                            writer.flush();
+                        }
+                        String output = readStreamIntoString(process.getInputStream());
+                        if (output.isEmpty()) {
+                            System.out.println("Not a valid HTML File");
+                            System.out.println(process.waitFor() == 0? "Process crashed": "Proces didnt crash");
+                        } else {
+                            System.out.println("Valid File with output: " + output);
+                        }
+
+                    }
+                    catch (Exception e){
+                        System.out.println(e.toString());
+                    }
+                }
         );
     }
 
@@ -58,6 +78,8 @@ public class Fuzzer {
     }
 
     private static List<String> getMutatedInputs(String seedInput, Collection<Function<String, String>> mutators) {
-        return List.of();
+        return mutators.stream()
+                .map(mutator -> mutator.apply(seedInput)) // Apply each mutator function
+                .collect(Collectors.toList());
     }
 }
